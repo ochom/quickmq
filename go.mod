@@ -1,6 +1,6 @@
 module ochom/pubsub
 
-go 1.19
+go 1.18
 
 require (
 	github.com/gin-gonic/gin v1.9.0

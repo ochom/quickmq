@@ -3,3 +3,4 @@ data
 *.base64
 build
 dist
+*.db
