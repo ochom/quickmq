@@ -3,11 +3,11 @@ package clients
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/ochom/quickmq/dto"
-
-	"github.com/ochom/gttp"
 )
 
 // Publisher is a struct that holds the name of the queue and the items in the queue
@@ -46,20 +46,19 @@ func (p *Publisher) publish(d []byte, delay time.Duration) error {
 	if err != nil {
 		return err
 	}
-
-	headers := map[string]string{
-		"Content-Type": "application/json",
-	}
-
 	url := fmt.Sprintf("%s/publish", p.url)
-	res, status, err := gttp.NewRequest(url, headers, data).Post()
+
+	cl, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
+		log.Println("Error dialing: ", err.Error())
 		return err
 	}
 
-	if status != 200 {
-		return fmt.Errorf("got status code %d: %s", status, string(res))
+	defer cl.Close()
 
+	if err := cl.WriteMessage(websocket.BinaryMessage, data); err != nil {
+		log.Println("Error writing message: ", err.Error())
+		return err
 	}
 
 	return nil

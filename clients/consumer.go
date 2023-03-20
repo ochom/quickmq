@@ -87,5 +87,4 @@ func (c *Consumer) reQueue(data []byte) {
 		log.Println("Error writing message: ", err.Error())
 		return
 	}
-
 }

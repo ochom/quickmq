@@ -25,7 +25,7 @@ func main() {
 	server.Use(gin.Recovery())
 
 	server.GET("/ping", ping())
-	server.POST("/publish", publish(channel))
+	server.Any("/publish", publish(channel))
 	server.Any("/consume", consume(channel))
 
 	go func() {
