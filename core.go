@@ -136,7 +136,7 @@ func (c *Channel) GetQueues() []*models.Queue {
 	for name := range c.queues {
 		q := models.NewQueue(name)
 		q.Items = c.queues[name]
-		res = append(res, models.NewQueue(string(name)))
+		res = append(res, q)
 	}
 
 	return res

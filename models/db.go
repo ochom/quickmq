@@ -19,7 +19,7 @@ func NewRepo() (*Repo, error) {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&Queue{}, &QueueItem{}); err != nil {
+	if err := db.AutoMigrate(&QueueItem{}); err != nil {
 		return nil, err
 	}
 

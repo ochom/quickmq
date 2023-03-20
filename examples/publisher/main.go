@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ochom/quickmq/clients"
@@ -21,8 +22,8 @@ func main() {
 	text := strings.Join(args[0:len(args)-1], " ")
 
 	publish := func(b []byte, delay int) {
-		pubslisher := clients.NewPublisher("http://localhost:8080", "test-queue")
-		if err := pubslisher.PublishWithDelay(b, time.Duration(delay)*time.Second); err != nil {
+		p := clients.NewPublisher("ws://localhost:3456", "test-queue")
+		if err := p.PublishWithDelay(b, time.Duration(delay)*time.Second); err != nil {
 			panic(err)
 		}
 	}
@@ -33,13 +34,14 @@ func main() {
 		panic(err)
 	}
 
-	for i := 0; i < 100; i++ {
-		go func(count int) {
-			message := examples.Message{
-				Body: text + " " + strconv.Itoa(count),
-			}
+	wg := &sync.WaitGroup{}
+	wg.Add(20)
 
-			b, err := json.Marshal(message)
+	for i := 0; i < 20; i++ {
+		go func(count int) {
+			defer wg.Done()
+
+			b, err := json.Marshal(&examples.Message{Body: text})
 			if err != nil {
 				panic(err)
 			}
@@ -48,6 +50,6 @@ func main() {
 		}(i)
 	}
 
+	wg.Wait()
 	log.Println("All messages published")
-	time.Sleep(5 * time.Second)
 }

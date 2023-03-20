@@ -38,8 +38,10 @@ func (c *Consumer) GetWorkers() int {
 }
 
 // Consume consumes a message from a queue
-func (c *Consumer) Consume() error {
+func (c *Consumer) Consume(exit chan bool) error {
 	msgs := make(chan []byte)
+	defer close(msgs)
+
 	go c.getMessages(msgs)
 
 	for msg := range msgs {
@@ -75,8 +77,9 @@ func (c *Consumer) getMessages(deliveries chan []byte) {
 
 // reQueue requeues a message
 func (c *Consumer) reQueue(data []byte) {
-	publisher := NewPublisher(c.host, c.queueName)
-	if err := publisher.Publish(data); err != nil {
+	log.Println("Requeuing message: ", string(data))
+	p := NewPublisher(c.host, c.queueName)
+	if err := p.Publish(data); err != nil {
 		log.Println("Error requeuing message: ", err.Error())
 		return
 	}
