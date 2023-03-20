@@ -19,18 +19,24 @@ func ping() gin.HandlerFunc {
 }
 
 func publish(channel *Channel) gin.HandlerFunc {
-
 	return func(c *gin.Context) {
-
-		data, err := c.GetRawData()
+		ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
 
+		defer ws.Close()
+
+		_, data, err := ws.ReadMessage()
+		if err != nil {
+			log.Println("Error reading message: ", err.Error())
+			return
+		}
+
 		req := &dto.PublishRequest{}
 		if err := json.Unmarshal(data, req); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			log.Println("Error unmarshaling: ", err.Error())
 			return
 		}
 
@@ -38,8 +44,6 @@ func publish(channel *Channel) gin.HandlerFunc {
 		item := models.NewItem(q.ID, req.Data, req.Delay)
 
 		channel.Add(q, item)
-
-		c.JSON(200, gin.H{"message": "ok"})
 	}
 }
 
