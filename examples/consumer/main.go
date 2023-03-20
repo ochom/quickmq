@@ -31,17 +31,17 @@ func main() {
 		return nil
 	}
 
-	quit := make(chan bool)
 	workers := 5
 	for i := 0; i < workers; i++ {
 		go func(id int) {
 			consumer := clients.NewConsumer("ws://localhost:3456", "test-queue", workerFunc, workers)
-			if err := consumer.Consume(quit); err != nil {
+			if err := consumer.Consume(); err != nil {
 				log.Println("Error consuming: ", err.Error())
 			}
 		}(i)
 	}
 
 	log.Println("Press CTRL-C to exit")
+	quit := make(chan bool)
 	<-quit
 }

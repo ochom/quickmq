@@ -38,11 +38,8 @@ func (c *Consumer) GetWorkers() int {
 }
 
 // Consume consumes a message from a queue
-func (c *Consumer) Consume(exit chan bool) error {
-	msgs := make(chan []byte)
-	defer close(msgs)
-
-	go c.getMessages(msgs)
+func (c *Consumer) Consume() error {
+	msgs := c.getMessages()
 
 	for msg := range msgs {
 		if err := c.workerFunc(msg); err != nil {
@@ -55,24 +52,30 @@ func (c *Consumer) Consume(exit chan bool) error {
 }
 
 // getMessages consumes a message from a queue
-func (c *Consumer) getMessages(deliveries chan []byte) {
+func (c *Consumer) getMessages() <-chan []byte {
 	cl, _, err := websocket.DefaultDialer.Dial(c.host+"/consume?queue="+c.queueName, nil)
 	if err != nil {
 		log.Println("Error dialing: ", err.Error())
-		return
+		return nil
 	}
 
-	defer cl.Close()
+	deliveries := make(chan []byte)
+	go func() {
 
-	for {
-		_, data, err := cl.ReadMessage()
-		if err != nil {
-			log.Println("Error reading message: ", err.Error())
-			return
+		for {
+			_, data, err := cl.ReadMessage()
+			if err != nil {
+				log.Println("Error reading message: ", err.Error())
+				break
+			}
+
+			deliveries <- data
 		}
 
-		deliveries <- data
-	}
+		close(deliveries)
+	}()
+
+	return deliveries
 }
 
 // reQueue requeues a message

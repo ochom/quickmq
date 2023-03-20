@@ -18,10 +18,6 @@ var upgrader = websocket.Upgrader{
 }
 
 // create a cron job that runs every 30 minutes
-// cron job will check the database for items that are ready to be sent
-// if there are items ready to be sent, add them to the queue
-// if there are no items ready to be sent, do nothing
-
 func cron(channel *Channel) {
 	ticker := time.NewTicker(CronJobInterval)
 	for {

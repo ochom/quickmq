@@ -11,7 +11,7 @@ import (
 	"github.com/ochom/quickmq/models"
 )
 
-// Queue is a struct that holds the name of the queue and the items in the queue
+// Channel  is a channel
 type Channel struct {
 	repo   *models.Repo
 	queues map[string][]*models.QueueItem
