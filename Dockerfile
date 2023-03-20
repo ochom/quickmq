@@ -19,12 +19,15 @@ RUN go build -o /server
 ##
 ## Deploy
 ##
-FROM golang:1.18-buster AS deploy
+FROM  gcr.io/distroless/base-debian11
 
 WORKDIR /app
 
 COPY --from=build /server .
 
+COPY --from=busybox:1.35.0-uclibc /bin/sh /bin/sh
+
+# create directory /var/pubsub/data/
 RUN mkdir -p /var/pubsub/data/
 
 EXPOSE 8080
