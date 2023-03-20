@@ -14,7 +14,7 @@ import (
 // Queue is a struct that holds the name of the queue and the items in the queue
 type Channel struct {
 	repo   *models.Repo
-	queues map[models.QueueName][]*models.QueueItem
+	queues map[string][]*models.QueueItem
 	stop   chan os.Signal
 	mutext sync.Mutex
 }
@@ -27,7 +27,7 @@ func NewChannel(stop chan os.Signal) *Channel {
 	}
 
 	return &Channel{
-		queues: make(map[models.QueueName][]*models.QueueItem),
+		queues: make(map[string][]*models.QueueItem),
 		repo:   repo,
 		stop:   stop,
 	}
@@ -48,7 +48,7 @@ func (c *Channel) Add(queue *models.Queue, item *models.QueueItem) {
 }
 
 // Get gets the next QueueItem from the queue that is ready to be sent
-func (c *Channel) Get(qName models.QueueName) *models.QueueItem {
+func (c *Channel) Get(qName string) *models.QueueItem {
 	c.mutext.Lock()
 	defer c.mutext.Unlock()
 
@@ -73,7 +73,7 @@ func (c *Channel) Get(qName models.QueueName) *models.QueueItem {
 
 // Consume consumes the queue and sends the items to the given channel
 // if stop signal is received, the function returns
-func (c *Channel) Consume(queue models.QueueName, ch chan<- []byte) {
+func (c *Channel) Consume(queue string, ch chan<- []byte) {
 	for {
 		select {
 		case <-c.stop:
@@ -92,11 +92,7 @@ func (c *Channel) Stop(ctx context.Context) error {
 
 	updateData := func() {
 		log.Println("Channel stopped, writing all items to disk")
-		for queue, items := range c.queues {
-			q := models.NewQueue(string(queue))
-			if err := c.repo.AddQueue(q); err != nil {
-				panic(err)
-			}
+		for _, items := range c.queues {
 
 			batchSize := 5000
 			batches := [][]*models.QueueItem{}
@@ -111,7 +107,7 @@ func (c *Channel) Stop(ctx context.Context) error {
 			}
 
 			for _, batch := range batches {
-				if err := c.repo.AddQueueItems(batch); err != nil {
+				if err := c.repo.SaveItems(batch); err != nil {
 					panic(err)
 				}
 			}
@@ -138,16 +134,10 @@ func (c *Channel) GetQueues() []*models.Queue {
 
 	res := make([]*models.Queue, 0)
 	for name := range c.queues {
+		q := models.NewQueue(name)
+		q.Items = c.queues[name]
 		res = append(res, models.NewQueue(string(name)))
 	}
 
 	return res
-}
-
-// GetQueueItems returns a list of queue items for a given queue
-func (c *Channel) GetQueueItems(queue models.QueueName) []*models.QueueItem {
-	c.mutext.Lock()
-	defer c.mutext.Unlock()
-
-	return c.queues[queue]
 }

@@ -9,11 +9,40 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/ochom/quickmq/models"
 )
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+}
+
+// create a cron job that runs every 30 minutes
+// cron job will check the database for items that are ready to be sent
+// if there are items ready to be sent, add them to the queue
+// if there are no items ready to be sent, do nothing
+
+func cron(channel *Channel) {
+	ticker := time.NewTicker(CronJobInterval)
+	for {
+		select {
+		case <-ticker.C:
+			until := time.Until(time.Now().Add(CronJobInterval))
+			items, err := channel.repo.GetQueueItems(until)
+			if err != nil {
+				log.Println("Error getting ready items: ", err.Error())
+				continue
+			}
+
+			for _, item := range items {
+				q := models.NewQueue(item.QueueName)
+				channel.Add(q, item)
+			}
+		case <-channel.stop:
+			ticker.Stop()
+			return
+		}
+	}
 }
 
 func main() {
@@ -30,13 +59,14 @@ func main() {
 
 	// api
 	server.GET("/api/queues", getQueues(channel))
-	server.GET("/api/queues/:queueName", getMessages(channel))
 
 	go func() {
 		if err := server.Run(":8080"); err != nil {
 			log.Fatalf("Error while running server: %v", err)
 		}
 	}()
+
+	go cron(channel)
 
 	signal.Notify(stop, os.Interrupt)
 	<-stop

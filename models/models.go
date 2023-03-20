@@ -5,48 +5,36 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
-	"gorm.io/gorm"
 )
-
-// QueueName is a string that holds the name of the queue
-type QueueName string
 
 // Queue is a struct that holds the name of the queue and the items in the queue
 type Queue struct {
-	ID    string      `gorm:"primaryKey"`
-	Name  QueueName   `gorm:"uniqueIndex"`
-	Items []QueueItem `gorm:"-"` // ignore this field
+	ID    string       `gorm:"primaryKey"`
+	Name  string       `gorm:"uniqueIndex"`
+	Items []*QueueItem `gorm:"-"` // ignore this field
 }
 
 // NewQueue creates a new Queue
 func NewQueue(name string) *Queue {
 	return &Queue{
 		ID:   uuid.New().String(),
-		Name: QueueName(name),
+		Name: name,
 	}
 }
 
-// AfterFind is a hook that is called after a record is found
-func (q *Queue) AfterFind(tx *gorm.DB) (err error) {
-	var items []QueueItem
-	tx.Where("queue_id = ?", q.ID).Find(&items)
-	q.Items = items
-	return
-}
-
 type QueueItem struct {
-	ID      string         `gorm:"primaryKey"`
-	QueueID string         `gorm:"index"`
-	Data    datatypes.JSON `json:"data"`
-	SendAt  int64          `json:"send_at"`
+	ID        string         `gorm:"primaryKey"`
+	QueueName string         `json:"queue_name"`
+	Data      datatypes.JSON `json:"data"`
+	SendAt    int64          `json:"send_at"`
 }
 
 // NewItem creates a new QueueItem
-func NewItem(queueID string, data []byte, delay time.Duration) *QueueItem {
+func NewItem(qName string, data []byte, delay time.Duration) *QueueItem {
 	return &QueueItem{
-		ID:      uuid.New().String(),
-		QueueID: queueID,
-		Data:    data,
-		SendAt:  time.Now().Add(delay).Unix(),
+		ID:        uuid.New().String(),
+		QueueName: qName,
+		Data:      data,
+		SendAt:    time.Now().Add(delay).Unix(),
 	}
 }
