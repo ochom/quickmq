@@ -50,7 +50,8 @@ func (p *Publisher) publish(d []byte, delay time.Duration) error {
 		"Content-Type": "application/json",
 	}
 
-	res, status, err := gttp.NewRequest(p.url, headers, data).Post()
+	url := fmt.Sprintf("%s/publish", p.url)
+	res, status, err := gttp.NewRequest(url, headers, data).Post()
 	if err != nil {
 		return err
 	}

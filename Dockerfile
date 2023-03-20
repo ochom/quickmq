@@ -1,15 +1,30 @@
-FROM golang:1.8-alpine
+# syntax=docker/dockerfile:1
+
+##
+## Build
+##
+FROM golang:1.18-buster  AS build
 
 WORKDIR /app
 
-COPY . .
+COPY go.* ./
+COPY go.sum ./
 
-RUN go get -d -v ./...
+RUN go mod download
 
-RUN go install -v ./...
+COPY . ./
 
-RUN go build -o main .
+RUN go build -o /server
+
+##
+## Deploy
+##
+FROM gcr.io/distroless/base-debian10
+
+WORKDIR /
+
+COPY --from=build /server .
 
 EXPOSE 8080
 
-CMD ["/app/main"]
+ENTRYPOINT ["/server"]

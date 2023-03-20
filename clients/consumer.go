@@ -3,6 +3,7 @@ package clients
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 // Consumer is a struct that holds the name of the queue and the items in the queue
@@ -52,6 +53,12 @@ func (c *Consumer) Consume(workerChan chan []byte) error {
 			return err
 		}
 
-		workerChan <- data[:n]
+		// unquote the data
+		d, err := strconv.Unquote(string(data[:n]))
+		if err != nil {
+			return err
+		}
+
+		workerChan <- []byte(d)
 	}
 }

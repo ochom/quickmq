@@ -16,6 +16,10 @@ sub:
 	@echo "Running consumer ..."
 	@./dist/sub
 
+tidy:
+	@echo "Tidying..."
+	@go mod tidy
+
 lint:
 	@echo "Linting..."
 	@golangci-lint run

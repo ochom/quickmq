@@ -27,11 +27,6 @@ func main() {
 	})
 
 	server.POST("/publish", func(c *gin.Context) {
-		queue := c.Query("queue")
-		if queue == "" {
-			c.JSON(400, gin.H{"error": "queue is required"})
-			return
-		}
 
 		data, err := c.GetRawData()
 		if err != nil {
@@ -45,7 +40,7 @@ func main() {
 			return
 		}
 
-		q := models.NewQueue(queue)
+		q := models.NewQueue(req.Queue)
 		item := models.NewItem(q.ID, req.Data, req.Delay)
 
 		channel.Add(q, item)

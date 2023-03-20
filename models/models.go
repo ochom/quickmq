@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -34,23 +35,18 @@ func (q *Queue) AfterFind(tx *gorm.DB) (err error) {
 }
 
 type QueueItem struct {
-	ID         string `gorm:"primaryKey"`
-	QueueID    string `gorm:"index"`
-	StringData string `json:"data"`
-	SendAt     int64  `json:"send_at"`
+	ID      string         `gorm:"primaryKey"`
+	QueueID string         `gorm:"index"`
+	Data    datatypes.JSON `json:"data"`
+	SendAt  int64          `json:"send_at"`
 }
 
 // NewItem creates a new QueueItem
 func NewItem(queueID string, data []byte, delay time.Duration) *QueueItem {
 	return &QueueItem{
-		ID:         uuid.New().String(),
-		QueueID:    queueID,
-		StringData: string(data),
-		SendAt:     time.Now().Add(delay).Unix(),
+		ID:      uuid.New().String(),
+		QueueID: queueID,
+		Data:    data,
+		SendAt:  time.Now().Add(delay).Unix(),
 	}
-}
-
-// GetData returns the data as a byte array
-func (i *QueueItem) GetData() []byte {
-	return []byte(i.StringData)
 }

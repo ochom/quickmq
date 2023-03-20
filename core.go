@@ -80,7 +80,7 @@ func (c *Channel) Consume(queue models.QueueName, ch chan<- []byte) {
 		default:
 			item := c.Get(queue)
 			if item != nil {
-				ch <- item.GetData()
+				ch <- item.Data
 			}
 		}
 	}
