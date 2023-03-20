@@ -1,8 +1,26 @@
 package main
 
-import "time"
-
-const (
-	// CronJobInterval is the interval at which the cron job runs
-	CronJobInterval = 30 * time.Minute
+import (
+	"os"
+	"strconv"
+	"time"
 )
+
+var (
+	// CronJobInterval is the interval at which the cron job runs
+	CronJobInterval = getCronInterval(30 * time.Minute)
+)
+
+func getCronInterval(d time.Duration) time.Duration {
+	val, ok := os.LookupEnv("CRON_INTERVAL")
+	if !ok {
+		return d
+	}
+
+	num, err := strconv.Atoi(val)
+	if err != nil {
+		return d
+	}
+
+	return time.Duration(num) * time.Minute
+}

@@ -42,7 +42,7 @@ func publish(channel *Channel) gin.HandlerFunc {
 
 		if req.Delay <= CronJobInterval {
 			q := models.NewQueue(req.Queue)
-			item := models.NewItem(q.ID, req.Data, req.Delay)
+			item := models.NewItem(req.Queue, req.Data, req.Delay)
 
 			channel.Add(q, item)
 			return

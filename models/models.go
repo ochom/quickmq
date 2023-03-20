@@ -9,7 +9,6 @@ import (
 
 // Queue is a struct that holds the name of the queue and the items in the queue
 type Queue struct {
-	ID    string       `gorm:"primaryKey"`
 	Name  string       `gorm:"uniqueIndex"`
 	Items []*QueueItem `gorm:"-"` // ignore this field
 }
@@ -17,7 +16,6 @@ type Queue struct {
 // NewQueue creates a new Queue
 func NewQueue(name string) *Queue {
 	return &Queue{
-		ID:   uuid.New().String(),
 		Name: name,
 	}
 }
