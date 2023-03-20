@@ -8,5 +8,4 @@ services:
       QUICK_USER: admin
       QUICK_PASSWORD: admin
     volumes:
-      - ./pubsub.db:/pubsub.db
-
+      - ./data:/var/pubsub/data/

@@ -19,11 +19,13 @@ RUN go build -o /server
 ##
 ## Deploy
 ##
-FROM gcr.io/distroless/base-debian10
+FROM golang:1.18-buster AS deploy
 
 WORKDIR /app
 
 COPY --from=build /server .
+
+RUN mkdir -p /var/pubsub/data/
 
 EXPOSE 8080
 
