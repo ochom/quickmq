@@ -3,30 +3,32 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"ochom/pubsub/clients"
-	"ochom/pubsub/examples"
+
+	"github.com/ochom/quickmq/clients"
+	"github.com/ochom/quickmq/examples"
 )
 
 func main() {
 
-	consumer := clients.NewConsumer("http://localhost:8081", "test-queue")
-	workChannel := make(chan []byte)
-	go func() {
-		for msg := range workChannel {
-			var message examples.Message
-			if err := json.Unmarshal(msg, &message); err != nil {
-				log.Println("Error unmarshalling message: ", err)
-			} else {
-				log.Println("Got message: ", message.Body)
-			}
+	workerFunc := func(msg []byte) error {
+		var message examples.Message
+		if err := json.Unmarshal(msg, &message); err != nil {
+			return err
 		}
-	}()
 
-	go func() {
-		if err := consumer.Consume(workChannel); err != nil {
-			panic(err)
-		}
-	}()
+		log.Printf("Got message: %s ", message.Body)
+		return nil
+	}
+
+	workers := 5
+	for i := 0; i < workers; i++ {
+		go func(id int) {
+			consumer := clients.NewConsumer("ws://localhost:8080", "test-queue", workerFunc)
+			if err := consumer.Consume(); err != nil {
+				log.Println("Error consuming: ", err.Error())
+			}
+		}(i)
+	}
 
 	log.Println("Press CTRL-C to exit")
 	quit := make(chan bool)

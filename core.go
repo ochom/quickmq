@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"ochom/pubsub/models"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/ochom/quickmq/models"
 )
 
 // Queue is a struct that holds the name of the queue and the items in the queue

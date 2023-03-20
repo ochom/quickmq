@@ -3,8 +3,9 @@ package clients
 import (
 	"encoding/json"
 	"fmt"
-	"ochom/pubsub/dto"
 	"time"
+
+	"github.com/ochom/quickmq/dto"
 
 	"github.com/ochom/gttp"
 )

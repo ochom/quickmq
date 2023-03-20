@@ -2,17 +2,19 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"log"
-	"ochom/pubsub/dto"
-	"ochom/pubsub/models"
 	"os"
 	"os/signal"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
 
 func main() {
 	stop := make(chan os.Signal, 1)
@@ -22,56 +24,11 @@ func main() {
 	server.Use(gin.Logger())
 	server.Use(gin.Recovery())
 
-	server.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "pong"})
-	})
-
-	server.POST("/publish", func(c *gin.Context) {
-
-		data, err := c.GetRawData()
-		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
-
-		req := &dto.PublishRequest{}
-		if err := json.Unmarshal(data, req); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
-
-		q := models.NewQueue(req.Queue)
-		item := models.NewItem(q.ID, req.Data, req.Delay)
-
-		channel.Add(q, item)
-
-		c.JSON(200, gin.H{"message": "ok"})
-	})
-
-	server.GET("/consume", func(c *gin.Context) {
-		queue := c.Query("queue")
-		if queue == "" {
-			c.JSON(400, gin.H{"error": "queue is required"})
-			return
-		}
-
-		stream := make(chan []byte)
-		go channel.Consume(models.QueueName(queue), stream)
-		c.Stream(func(w io.Writer) bool {
-			for {
-				select {
-				case <-stop:
-					return false
-				case item := <-stream:
-					c.JSON(200, item)
-					c.Writer.Flush()
-				}
-			}
-		})
-	})
+	server.GET("/ping", ping())
+	server.POST("/publish", publish(channel))
+	server.Any("/consume", consume(channel))
 
 	go func() {
-		log.Println("Starting server...")
 		if err := server.Run(":8080"); err != nil {
 			log.Fatalf("Error while running server: %v", err)
 		}

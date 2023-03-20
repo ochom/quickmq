@@ -1,64 +1,78 @@
 package clients
 
 import (
-	"fmt"
-	"net/http"
-	"strconv"
+	"log"
+
+	"github.com/gorilla/websocket"
 )
+
+// WorkerFunc is a function that processes a message
+type WorkerFunc func([]byte) error
 
 // Consumer is a struct that holds the name of the queue and the items in the queue
 type Consumer struct {
-	host      string
-	queueName string
+	host       string
+	queueName  string
+	workerFunc WorkerFunc
 }
 
 // NewConsumer creates a new Consumer
-func NewConsumer(url string, queueName string) *Consumer {
+func NewConsumer(url string, queueName string, workerFunc WorkerFunc) *Consumer {
 	return &Consumer{
-		host:      url,
-		queueName: queueName,
+		host:       url,
+		queueName:  queueName,
+		workerFunc: workerFunc,
+	}
+}
+
+// getMessages consumes a message from a queue
+func (c *Consumer) getMessages(deliveries chan []byte) {
+	cl, _, err := websocket.DefaultDialer.Dial(c.host+"/consume?queue="+c.queueName, nil)
+	if err != nil {
+		log.Println("Error dialing: ", err.Error())
+		return
+	}
+
+	defer cl.Close()
+
+	for {
+		_, data, err := cl.ReadMessage()
+		if err != nil {
+			log.Println("Error reading message: ", err.Error())
+			return
+		}
+
+		deliveries <- data
 	}
 }
 
 // Consume consumes a message from a queue
-func (c *Consumer) Consume(workerChan chan []byte) error {
-	headers := map[string]string{
-		"Accept":      "application/json",
-		"requestType": "stream",
+func (c *Consumer) Consume() error {
+	msgs := make(chan []byte)
+	go c.getMessages(msgs)
+
+	for msg := range msgs {
+		if err := c.workerFunc(msg); err != nil {
+			log.Println("Error processing message: ", err)
+			c.reQueue(msg)
+		}
 	}
 
-	url := fmt.Sprintf("%s/consume?queue=%s", c.host, c.queueName)
-	req, err := http.NewRequest("GET", url, nil)
+	return nil
+}
+
+// reQueue requeues a message
+func (c *Consumer) reQueue(data []byte) error {
+	cl, _, err := websocket.DefaultDialer.Dial(c.host+"/requeue", nil)
 	if err != nil {
 		return err
 	}
 
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
+	defer cl.Close()
 
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
+	if err := cl.WriteMessage(websocket.BinaryMessage, data); err != nil {
 		return err
 	}
 
-	if res.StatusCode != 200 {
-		return fmt.Errorf("got status code %d: %s", res.StatusCode, res.Status)
-	}
-
-	for {
-		data := make([]byte, 1024)
-		n, err := res.Body.Read(data)
-		if err != nil {
-			return err
-		}
-
-		// unquote the data
-		d, err := strconv.Unquote(string(data[:n]))
-		if err != nil {
-			return err
-		}
-
-		workerChan <- []byte(d)
-	}
+	return nil
 }

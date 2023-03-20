@@ -1,10 +1,11 @@
-module ochom/pubsub
+module github.com/ochom/quickmq
 
 go 1.18
 
 require (
 	github.com/gin-gonic/gin v1.9.0
 	github.com/google/uuid v1.3.0
+	github.com/gorilla/websocket v1.5.0
 	github.com/ochom/gttp v0.0.13
 	gorm.io/datatypes v1.1.1
 	gorm.io/driver/sqlite v1.4.4
