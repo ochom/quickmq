@@ -12,7 +12,7 @@ type Repo struct {
 
 // NewRepo creates a new Repo
 func NewRepo() (*Repo, error) {
-	db, err := gorm.Open(sqlite.Open("pubsub.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("/var/pubsub/data/db.sqlite"), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
