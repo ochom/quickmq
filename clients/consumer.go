@@ -25,6 +25,21 @@ func NewConsumer(url string, queueName string, workerFunc WorkerFunc) *Consumer 
 	}
 }
 
+// Consume consumes a message from a queue
+func (c *Consumer) Consume() error {
+	msgs := make(chan []byte)
+	go c.getMessages(msgs)
+
+	for msg := range msgs {
+		if err := c.workerFunc(msg); err != nil {
+			log.Println("Error processing message: ", err)
+			c.reQueue(msg)
+		}
+	}
+
+	return nil
+}
+
 // getMessages consumes a message from a queue
 func (c *Consumer) getMessages(deliveries chan []byte) {
 	cl, _, err := websocket.DefaultDialer.Dial(c.host+"/consume?queue="+c.queueName, nil)
@@ -46,33 +61,19 @@ func (c *Consumer) getMessages(deliveries chan []byte) {
 	}
 }
 
-// Consume consumes a message from a queue
-func (c *Consumer) Consume() error {
-	msgs := make(chan []byte)
-	go c.getMessages(msgs)
-
-	for msg := range msgs {
-		if err := c.workerFunc(msg); err != nil {
-			log.Println("Error processing message: ", err)
-			c.reQueue(msg)
-		}
-	}
-
-	return nil
-}
-
 // reQueue requeues a message
-func (c *Consumer) reQueue(data []byte) error {
+func (c *Consumer) reQueue(data []byte) {
 	cl, _, err := websocket.DefaultDialer.Dial(c.host+"/requeue", nil)
 	if err != nil {
-		return err
+		log.Println("Error dialing: ", err.Error())
+		return
 	}
 
 	defer cl.Close()
 
 	if err := cl.WriteMessage(websocket.BinaryMessage, data); err != nil {
-		return err
+		log.Println("Error writing message: ", err.Error())
+		return
 	}
 
-	return nil
 }
