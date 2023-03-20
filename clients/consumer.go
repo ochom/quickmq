@@ -75,16 +75,9 @@ func (c *Consumer) getMessages(deliveries chan []byte) {
 
 // reQueue requeues a message
 func (c *Consumer) reQueue(data []byte) {
-	cl, _, err := websocket.DefaultDialer.Dial(c.host+"/requeue", nil)
-	if err != nil {
-		log.Println("Error dialing: ", err.Error())
-		return
-	}
-
-	defer cl.Close()
-
-	if err := cl.WriteMessage(websocket.BinaryMessage, data); err != nil {
-		log.Println("Error writing message: ", err.Error())
+	publisher := NewPublisher(c.host, c.queueName)
+	if err := publisher.Publish(data); err != nil {
+		log.Println("Error requeuing message: ", err.Error())
 		return
 	}
 }
