@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -24,52 +26,42 @@ func NewRepo() (*Repo, error) {
 	return &Repo{DB: db}, nil
 }
 
-// AddQueue adds a queue to the database
-func (r *Repo) AddQueue(queue *Queue) error {
-	return r.DB.Create(&queue).Error
-}
-
-// AddQueueItem adds a queue item to the database
-func (r *Repo) AddQueueItems(items []*QueueItem) error {
+// SaveItems adds  QueueItems to the database
+func (r *Repo) SaveItems(items []*QueueItem) error {
 	return r.DB.Create(&items).Error
 }
 
+// SaveItem adds a QueueItem to the database
+func (r *Repo) SaveItem(item *QueueItem) error {
+	return r.DB.Create(&item).Error
+}
+
 // GetQueues gets all the queues from the database
-func (r *Repo) GetQueues() ([]Queue, error) {
-	var queues []Queue
-	err := r.DB.Find(&queues).Error
+func (r *Repo) GetQueueItems(until time.Duration) ([]*QueueItem, error) {
+
+	ids := make([]string, 0)
+	var items []*QueueItem
+	err := r.DB.Where("send_at <= ?", time.Now().Add(until).Unix()).Find(&items).Error
 	if err != nil {
 		return nil, err
 	}
 
-	for i := range queues {
-		queues[i].Items, err = r.GetQueueItems(queues[i].ID)
-		if err != nil {
+	for _, item := range items {
+		ids = append(ids, item.ID)
+	}
+
+	if len(ids) > 0 {
+		if err := r.DeleteQueueItems(ids); err != nil {
 			return nil, err
 		}
 	}
 
-	return queues, nil
-}
-
-// GetQueueItems gets all the items from a queue
-func (r *Repo) GetQueueItems(queueID string) ([]QueueItem, error) {
-	var items []QueueItem
-	err := r.DB.Where("queue_id = ?", queueID).Find(&items).Error
-	if err != nil {
-		return nil, err
-	}
 	return items, nil
 }
 
 // DeleteQueues deletes all the queues from the database
-func (r *Repo) DeleteQueues() error {
-	err := r.DB.Exec("DELETE FROM queues").Error
-	if err != nil {
-		return err
-	}
-
-	err = r.DB.Exec("DELETE FROM queue_items").Error
+func (r *Repo) DeleteQueueItems(ids []string) error {
+	err := r.DB.Exec("DELETE FROM queue_items WHERE id IN ?", ids).Error
 	if err != nil {
 		return err
 	}

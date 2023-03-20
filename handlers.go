@@ -40,22 +40,30 @@ func publish(channel *Channel) gin.HandlerFunc {
 			return
 		}
 
-		q := models.NewQueue(req.Queue)
-		item := models.NewItem(q.ID, req.Data, req.Delay)
+		if req.Delay <= CronJobInterval {
+			q := models.NewQueue(req.Queue)
+			item := models.NewItem(req.Queue, req.Data, req.Delay)
 
-		channel.Add(q, item)
+			channel.Add(q, item)
+			return
+		}
+
+		// if delay is greater than cron time, add queue and items to database
+		item := models.NewItem(req.Queue, req.Data, req.Delay)
+		if err := channel.repo.SaveItem(item); err != nil {
+			log.Println("Error adding to repo: ", err.Error())
+			return
+		}
 	}
 }
 
 func consume(channel *Channel) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		queue := c.Query("queue")
-		if queue == "" {
+		queueName := c.Query("queue")
+		if queueName == "" {
 			c.JSON(400, gin.H{"error": "queue is required"})
 			return
 		}
-
-		queueName := models.QueueName(queue)
 
 		ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -88,16 +96,5 @@ func consume(channel *Channel) gin.HandlerFunc {
 func getQueues(channel *Channel) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(200, channel.GetQueues())
-	}
-}
-
-func getMessages(channel *Channel) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		queue := c.Param("queueName")
-		if queue == "" {
-			c.JSON(400, gin.H{"error": "queue is required"})
-			return
-		}
-		c.JSON(200, channel.GetQueueItems(models.QueueName(queue)))
 	}
 }
