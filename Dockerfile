@@ -27,4 +27,4 @@ COPY --from=build /server .
 
 EXPOSE 8080
 
-ENTRYPOINT ["/app/server"]
+ENTRYPOINT ["./server"]
