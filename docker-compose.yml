@@ -1,7 +1,8 @@
-version: '3.7'
+version: "3.7"
 services:
   my-quick-pubsub:
     build: .
+    # image: ochom/quickmq:latest
     ports:
       - "3456:8080"
     environment:
