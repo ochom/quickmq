@@ -129,5 +129,25 @@ func (c *Channel) Stop(ctx context.Context) error {
 			return nil
 		}
 	}
+}
 
+// GetQueues returns a list of queues
+func (c *Channel) GetQueues() []*models.Queue {
+	c.mutext.Lock()
+	defer c.mutext.Unlock()
+
+	res := make([]*models.Queue, 0)
+	for name := range c.queues {
+		res = append(res, models.NewQueue(string(name)))
+	}
+
+	return res
+}
+
+// GetQueueItems returns a list of queue items for a given queue
+func (c *Channel) GetQueueItems(queue models.QueueName) []*models.QueueItem {
+	c.mutext.Lock()
+	defer c.mutext.Unlock()
+
+	return c.queues[queue]
 }

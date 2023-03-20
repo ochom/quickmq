@@ -28,6 +28,10 @@ func main() {
 	server.Any("/publish", publish(channel))
 	server.Any("/consume", consume(channel))
 
+	// api
+	server.GET("/api/queues", getQueues(channel))
+	server.GET("/api/queues/:queueName", getMessages(channel))
+
 	go func() {
 		if err := server.Run(":8080"); err != nil {
 			log.Fatalf("Error while running server: %v", err)

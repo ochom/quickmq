@@ -84,3 +84,20 @@ func consume(channel *Channel) gin.HandlerFunc {
 		}
 	}
 }
+
+func getQueues(channel *Channel) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(200, channel.GetQueues())
+	}
+}
+
+func getMessages(channel *Channel) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		queue := c.Param("queueName")
+		if queue == "" {
+			c.JSON(400, gin.H{"error": "queue is required"})
+			return
+		}
+		c.JSON(200, channel.GetQueueItems(models.QueueName(queue)))
+	}
+}
