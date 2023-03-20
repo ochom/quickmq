@@ -14,15 +14,27 @@ type Consumer struct {
 	host       string
 	queueName  string
 	workerFunc WorkerFunc
+	workers    int
 }
 
 // NewConsumer creates a new Consumer
-func NewConsumer(url string, queueName string, workerFunc WorkerFunc) *Consumer {
+func NewConsumer(url string, queueName string, workerFunc WorkerFunc, workers int) *Consumer {
 	return &Consumer{
 		host:       url,
 		queueName:  queueName,
 		workerFunc: workerFunc,
+		workers:    workers,
 	}
+}
+
+// GetQueueName returns the name of the queue
+func (c *Consumer) GetQueueName() string {
+	return c.queueName
+}
+
+// GetWorkers returns the number of workers
+func (c *Consumer) GetWorkers() int {
+	return c.workers
 }
 
 // Consume consumes a message from a queue
