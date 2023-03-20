@@ -23,7 +23,7 @@ func main() {
 	workers := 5
 	for i := 0; i < workers; i++ {
 		go func(id int) {
-			consumer := clients.NewConsumer("ws://localhost:8080", "test-queue", workerFunc)
+			consumer := clients.NewConsumer("ws://localhost:8080", "test-queue", workerFunc, workers)
 			if err := consumer.Consume(); err != nil {
 				log.Println("Error consuming: ", err.Error())
 			}
