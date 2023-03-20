@@ -1,0 +1,5 @@
+data
+*.sh
+*.base64
+build
+dist
