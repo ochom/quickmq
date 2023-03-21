@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/ochom/quickmq/models"
 )
 
 var upgrader = websocket.Upgrader{
@@ -18,7 +17,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // create a cron job that runs every 30 minutes
-func cron(channel *Channel) {
+func cron(channel *channel) {
 	ticker := time.NewTicker(CronJobInterval)
 	for {
 		select {
@@ -31,8 +30,7 @@ func cron(channel *Channel) {
 			}
 
 			for _, item := range items {
-				q := models.NewQueue(item.QueueName)
-				channel.Add(q, item)
+				channel.publish(item)
 			}
 		case <-channel.stop:
 			ticker.Stop()
@@ -43,7 +41,7 @@ func cron(channel *Channel) {
 
 func main() {
 	stop := make(chan os.Signal, 1)
-	channel := NewChannel(stop)
+	x := newChannel(stop)
 
 	server := gin.New()
 	server.Use(gin.LoggerWithConfig(gin.LoggerConfig{
@@ -58,11 +56,11 @@ func main() {
 	// gin hide paths
 
 	server.GET("/ping", ping())
-	server.Any("/publish", publish(channel))
-	server.Any("/consume", consume(channel))
+	server.Any("/publish", publish(x))
+	server.Any("/consume", consume(x))
 
 	// api
-	server.GET("/api/queues", getQueues(channel))
+	server.GET("/api/queues", getQueues(x))
 
 	go func() {
 		if err := server.Run(":8080"); err != nil {
@@ -70,7 +68,7 @@ func main() {
 		}
 	}()
 
-	go cron(channel)
+	go cron(x)
 
 	signal.Notify(stop, os.Interrupt)
 	<-stop
@@ -79,7 +77,7 @@ func main() {
 	defer cancel()
 
 	log.Println("Exiting...")
-	if err := channel.Stop(ctx); err != nil {
+	if err := x.kill(ctx); err != nil {
 		log.Fatalf("Error while exiting: %v", err)
 	}
 

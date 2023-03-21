@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"time"
 
 	"github.com/ochom/quickmq/dto"
 	"github.com/ochom/quickmq/models"
@@ -18,7 +17,7 @@ func ping() gin.HandlerFunc {
 	}
 }
 
-func publish(channel *Channel) gin.HandlerFunc {
+func publish(x *channel) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -45,22 +44,20 @@ func publish(channel *Channel) gin.HandlerFunc {
 		}
 
 		if req.Delay <= CronJobInterval {
-			q := models.NewQueue(req.Queue)
 			item := models.NewItem(req.Queue, req.Data, req.Delay)
-
-			channel.Add(q, item)
+			x.publish(item)
 			return
 		}
 
 		// if delay is greater than cron time, add queue and items to database
 		item := models.NewItem(req.Queue, req.Data, req.Delay)
-		if err := channel.repo.SaveItem(item); err != nil {
+		if err := x.repo.SaveItem(item); err != nil {
 			log.Println("Error adding to repo: ", err.Error())
 		}
 	}
 }
 
-func consume(channel *Channel) gin.HandlerFunc {
+func consume(channel *channel) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		queueName := c.Query("queue")
 		if queueName == "" {
@@ -76,28 +73,18 @@ func consume(channel *Channel) gin.HandlerFunc {
 
 		defer ws.Close()
 
-		for {
-			select {
-			case <-channel.stop:
+		messages := channel.consume(queueName)
+		for msg := range messages {
+			if err := ws.WriteMessage(websocket.BinaryMessage, msg); err != nil {
+				log.Printf("Error while writing to websocket: %v", err)
 				return
-			default:
-				item := channel.Get(queueName)
-				if item == nil {
-					time.Sleep(1 * time.Second)
-					continue
-				}
-
-				if err := ws.WriteMessage(websocket.BinaryMessage, item.Data); err != nil {
-					log.Printf("Error while writing to websocket: %v", err)
-					return
-				}
 			}
 		}
 	}
 }
 
-func getQueues(channel *Channel) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, channel.GetQueues())
+func getQueues(x *channel) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.JSON(200, x.getQueues())
 	}
 }
