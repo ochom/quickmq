@@ -1,40 +1,35 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/ochom/quickmq/models"
 )
 
-// Channel  is a channel
-type channel struct {
+// quickMQ  is a  in-memory queue
+type quickMQ struct {
 	repo   *models.Repo
 	queues map[string][]*models.QueueItem
-	stop   chan os.Signal
 	mutext sync.Mutex
 }
 
-// NewChannel creates a new Channel
-func newChannel(stop chan os.Signal) *channel {
+// newQuickMQ creates a new quickMQ
+func newQuickMQ() (*quickMQ, error) {
 	repo, err := models.NewRepo()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return &channel{
+	return &quickMQ{
 		queues: make(map[string][]*models.QueueItem),
 		repo:   repo,
-		stop:   stop,
-	}
+	}, nil
 }
 
 // Add adds a QueueItem to the queue
-func (c *channel) publish(item *models.QueueItem) {
+func (c *quickMQ) publish(item *models.QueueItem) {
 	c.mutext.Lock()
 	defer c.mutext.Unlock()
 
@@ -47,8 +42,8 @@ func (c *channel) publish(item *models.QueueItem) {
 	c.queues[item.QueueName] = q
 }
 
-// Get gets the next QueueItem from the queue that is ready to be sent
-func (c *channel) getItem(qName string) *models.QueueItem {
+// getItem returns the next item in the queue
+func (c *quickMQ) getItem(qName string) *models.QueueItem {
 	c.mutext.Lock()
 	defer c.mutext.Unlock()
 
@@ -71,74 +66,55 @@ func (c *channel) getItem(qName string) *models.QueueItem {
 	return nil
 }
 
-// Consume consumes the queue and sends the items to the given channel
-// if stop signal is received, the function returns
-func (c *channel) consume(queue string) <-chan []byte {
-	ch := make(chan []byte)
+// consume returns a channel that will return the next item in the queue
+func (c *quickMQ) consume(queue string) <-chan []byte {
+	ch := make(chan []byte, 1)
+	defer close(ch)
 
 	go func() {
 		for {
-			select {
-			case <-c.stop:
-				close(ch)
-				return
-			default:
-				item := c.getItem(queue)
-				if item == nil {
-					time.Sleep(1 * time.Second)
-					continue
-				}
-
-				ch <- item.Data
+			item := c.getItem(queue)
+			if item == nil {
+				time.Sleep(1 * time.Second)
+				continue
 			}
+
+			ch <- item.Data
 		}
 	}()
 
 	return ch
 }
 
-// Stop stops the channel and writes all items to disk
-func (c *channel) kill(ctx context.Context) error {
+// Stop stops the quickMQ and writes all items to disk
+func (c *quickMQ) kill() {
+	log.Println("Channel stopped, writing all items to disk")
+	for _, items := range c.queues {
 
-	updateData := func() {
-		log.Println("Channel stopped, writing all items to disk")
-		for _, items := range c.queues {
-
-			batchSize := 5000
-			batches := [][]*models.QueueItem{}
-			for i := 0; i < len(items); i += batchSize {
-				start := i
-				end := i + batchSize
-				if end > len(items) {
-					end = len(items)
-				}
-
-				batches = append(batches, items[start:end])
+		batchSize := 5000
+		batches := [][]*models.QueueItem{}
+		for i := 0; i < len(items); i += batchSize {
+			start := i
+			end := i + batchSize
+			if end > len(items) {
+				end = len(items)
 			}
 
-			for _, batch := range batches {
-				if err := c.repo.SaveItems(batch); err != nil {
-					panic(err)
-				}
+			batches = append(batches, items[start:end])
+		}
+
+		for _, batch := range batches {
+			if err := c.repo.SaveItems(batch); err != nil {
+				panic(err)
 			}
 		}
-
-		log.Println("Channel stopped, all items written to disk")
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("context timed out")
-		default:
-			updateData()
-			return nil
-		}
-	}
+	log.Println("Channel stopped, all items written to disk")
 }
 
-// GetQueues returns a list of queues
-func (c *channel) getQueues() []*models.Queue {
+// getQueues returns all queues and their items
+func (c *quickMQ) getQueues() []*models.Queue {
 	c.mutext.Lock()
 	defer c.mutext.Unlock()
 

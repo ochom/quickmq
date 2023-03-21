@@ -17,7 +17,7 @@ func ping() gin.HandlerFunc {
 	}
 }
 
-func publish(x *channel) gin.HandlerFunc {
+func publish(x *quickMQ) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -57,7 +57,7 @@ func publish(x *channel) gin.HandlerFunc {
 	}
 }
 
-func consume(channel *channel) gin.HandlerFunc {
+func consume(quickMQ *quickMQ) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		queueName := c.Query("queue")
 		if queueName == "" {
@@ -73,7 +73,7 @@ func consume(channel *channel) gin.HandlerFunc {
 
 		defer ws.Close()
 
-		messages := channel.consume(queueName)
+		messages := quickMQ.consume(queueName)
 		for msg := range messages {
 			if err := ws.WriteMessage(websocket.BinaryMessage, msg); err != nil {
 				log.Printf("Error while writing to websocket: %v", err)
@@ -83,7 +83,7 @@ func consume(channel *channel) gin.HandlerFunc {
 	}
 }
 
-func getQueues(x *channel) gin.HandlerFunc {
+func getQueues(x *quickMQ) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.JSON(200, x.getQueues())
 	}

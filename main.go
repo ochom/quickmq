@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -17,22 +16,22 @@ var upgrader = websocket.Upgrader{
 }
 
 // create a cron job that runs every 30 minutes
-func cron(channel *channel) {
+func cron(mq *quickMQ, stop chan os.Signal) {
 	ticker := time.NewTicker(CronJobInterval)
 	for {
 		select {
 		case <-ticker.C:
 			until := time.Until(time.Now().Add(CronJobInterval))
-			items, err := channel.repo.GetQueueItems(until)
+			items, err := mq.repo.GetQueueItems(until)
 			if err != nil {
 				log.Println("Error getting ready items: ", err.Error())
 				continue
 			}
 
 			for _, item := range items {
-				channel.publish(item)
+				mq.publish(item)
 			}
-		case <-channel.stop:
+		case <-stop:
 			ticker.Stop()
 			return
 		}
@@ -40,8 +39,10 @@ func cron(channel *channel) {
 }
 
 func main() {
-	stop := make(chan os.Signal, 1)
-	x := newChannel(stop)
+	mq, err := newQuickMQ()
+	if err != nil {
+		log.Fatalf("Error while creating quickMQ: %v", err)
+	}
 
 	server := gin.New()
 	server.Use(gin.LoggerWithConfig(gin.LoggerConfig{
@@ -56,11 +57,11 @@ func main() {
 	// gin hide paths
 
 	server.GET("/ping", ping())
-	server.Any("/publish", publish(x))
-	server.Any("/consume", consume(x))
+	server.Any("/publish", publish(mq))
+	server.Any("/consume", consume(mq))
 
 	// api
-	server.GET("/api/queues", getQueues(x))
+	server.GET("/api/queues", getQueues(mq))
 
 	go func() {
 		if err := server.Run(":8080"); err != nil {
@@ -68,18 +69,11 @@ func main() {
 		}
 	}()
 
-	go cron(x)
-
+	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
+
+	go cron(mq, stop)
 	<-stop
-	// wait for 5 minutes before exiting
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 
-	log.Println("Exiting...")
-	if err := x.kill(ctx); err != nil {
-		log.Fatalf("Error while exiting: %v", err)
-	}
-
-	log.Println("Exited successfully")
+	mq.kill()
 }
