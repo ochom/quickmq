@@ -43,7 +43,6 @@ func (c *Consumer) Consume() error {
 
 	for msg := range msgs {
 		if err := c.workerFunc(msg); err != nil {
-			log.Println("Error processing message: ", err)
 			c.reQueue(msg)
 		}
 	}
@@ -78,9 +77,8 @@ func (c *Consumer) getMessages() <-chan []byte {
 	return deliveries
 }
 
-// reQueue requeues a message
+// reQueue re-queues a message
 func (c *Consumer) reQueue(data []byte) {
-	log.Println("Requeuing message: ", string(data))
 	p := NewPublisher(c.host, c.queueName)
 	if err := p.Publish(data); err != nil {
 		log.Println("Error requeuing message: ", err.Error())
