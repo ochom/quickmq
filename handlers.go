@@ -26,7 +26,11 @@ func publish(channel *Channel) gin.HandlerFunc {
 			return
 		}
 
-		defer ws.Close()
+		defer func() {
+			if err := ws.Close(); err != nil {
+				log.Println("Error closing websocket: ", err.Error())
+			}
+		}()
 
 		_, data, err := ws.ReadMessage()
 		if err != nil {
@@ -52,7 +56,6 @@ func publish(channel *Channel) gin.HandlerFunc {
 		item := models.NewItem(req.Queue, req.Data, req.Delay)
 		if err := channel.repo.SaveItem(item); err != nil {
 			log.Println("Error adding to repo: ", err.Error())
-			return
 		}
 	}
 }
