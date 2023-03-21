@@ -17,7 +17,7 @@ func ping() gin.HandlerFunc {
 	}
 }
 
-func publish(x *quickMQ) gin.HandlerFunc {
+func publish(mq *quickMQ) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -39,25 +39,25 @@ func publish(x *quickMQ) gin.HandlerFunc {
 
 		req := &dto.PublishRequest{}
 		if err := json.Unmarshal(data, req); err != nil {
-			log.Println("Error unmarshaling: ", err.Error())
+			log.Println("Error un-marshaling: ", err.Error())
 			return
 		}
 
 		if req.Delay <= CronJobInterval {
 			item := models.NewItem(req.Queue, req.Data, req.Delay)
-			x.publish(item)
+			mq.publish(item)
 			return
 		}
 
 		// if delay is greater than cron time, add queue and items to database
 		item := models.NewItem(req.Queue, req.Data, req.Delay)
-		if err := x.repo.SaveItem(item); err != nil {
+		if err := mq.repo.SaveItem(item); err != nil {
 			log.Println("Error adding to repo: ", err.Error())
 		}
 	}
 }
 
-func consume(quickMQ *quickMQ) gin.HandlerFunc {
+func consume(mq *quickMQ) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		queueName := c.Query("queue")
 		if queueName == "" {
@@ -73,7 +73,7 @@ func consume(quickMQ *quickMQ) gin.HandlerFunc {
 
 		defer ws.Close()
 
-		messages := quickMQ.consume(queueName)
+		messages := mq.consume(queueName)
 		for msg := range messages {
 			if err := ws.WriteMessage(websocket.BinaryMessage, msg); err != nil {
 				log.Printf("Error while writing to websocket: %v", err)
@@ -83,8 +83,8 @@ func consume(quickMQ *quickMQ) gin.HandlerFunc {
 	}
 }
 
-func getQueues(x *quickMQ) gin.HandlerFunc {
+func getQueues(mq *quickMQ) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		ctx.JSON(200, x.getQueues())
+		ctx.JSON(200, mq.getQueues())
 	}
 }
