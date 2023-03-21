@@ -12,7 +12,7 @@ import (
 )
 
 // Channel  is a channel
-type Channel struct {
+type channel struct {
 	repo   *models.Repo
 	queues map[string][]*models.QueueItem
 	stop   chan os.Signal
@@ -20,13 +20,13 @@ type Channel struct {
 }
 
 // NewChannel creates a new Channel
-func NewChannel(stop chan os.Signal) *Channel {
+func newChannel(stop chan os.Signal) *channel {
 	repo, err := models.NewRepo()
 	if err != nil {
 		panic(err)
 	}
 
-	return &Channel{
+	return &channel{
 		queues: make(map[string][]*models.QueueItem),
 		repo:   repo,
 		stop:   stop,
@@ -34,21 +34,21 @@ func NewChannel(stop chan os.Signal) *Channel {
 }
 
 // Add adds a QueueItem to the queue
-func (c *Channel) Add(queue *models.Queue, item *models.QueueItem) {
+func (c *channel) publish(item *models.QueueItem) {
 	c.mutext.Lock()
 	defer c.mutext.Unlock()
 
-	q, ok := c.queues[queue.Name]
+	q, ok := c.queues[item.QueueName]
 	if !ok {
 		q = make([]*models.QueueItem, 0)
 	}
 
 	q = append(q, item)
-	c.queues[queue.Name] = q
+	c.queues[item.QueueName] = q
 }
 
 // Get gets the next QueueItem from the queue that is ready to be sent
-func (c *Channel) Get(qName string) *models.QueueItem {
+func (c *channel) getItem(qName string) *models.QueueItem {
 	c.mutext.Lock()
 	defer c.mutext.Unlock()
 
@@ -73,22 +73,32 @@ func (c *Channel) Get(qName string) *models.QueueItem {
 
 // Consume consumes the queue and sends the items to the given channel
 // if stop signal is received, the function returns
-func (c *Channel) Consume(queue string, ch chan<- []byte) {
-	for {
-		select {
-		case <-c.stop:
-			return
-		default:
-			item := c.Get(queue)
-			if item != nil {
+func (c *channel) consume(queue string) <-chan []byte {
+	ch := make(chan []byte)
+
+	go func() {
+		for {
+			select {
+			case <-c.stop:
+				close(ch)
+				return
+			default:
+				item := c.getItem(queue)
+				if item == nil {
+					time.Sleep(1 * time.Second)
+					continue
+				}
+
 				ch <- item.Data
 			}
 		}
-	}
+	}()
+
+	return ch
 }
 
 // Stop stops the channel and writes all items to disk
-func (c *Channel) Stop(ctx context.Context) error {
+func (c *channel) kill(ctx context.Context) error {
 
 	updateData := func() {
 		log.Println("Channel stopped, writing all items to disk")
@@ -128,7 +138,7 @@ func (c *Channel) Stop(ctx context.Context) error {
 }
 
 // GetQueues returns a list of queues
-func (c *Channel) GetQueues() []*models.Queue {
+func (c *channel) getQueues() []*models.Queue {
 	c.mutext.Lock()
 	defer c.mutext.Unlock()
 

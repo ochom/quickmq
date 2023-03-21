@@ -1,8 +1,8 @@
 version: "3.7"
 services:
-  my-quick-pubsub:
+  quickmq:
     build: .
-    # image: ochom/quickmq:latest
+    container_name: quickmq
     ports:
       - "3456:8080"
     environment:
