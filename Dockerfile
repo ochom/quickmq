@@ -16,6 +16,9 @@ COPY . ./
 
 RUN go build -o /server
 
+# Busybox for scripts
+FROM busybox:1.35.0-uclibc as busybox
+
 ##
 ## Deploy
 ##
@@ -25,7 +28,12 @@ WORKDIR /app
 
 COPY --from=build /server .
 
-COPY --from=busybox:1.35.0-uclibc /bin/sh /bin/sh
+# copy busybox shell to /bin/sh
+COPY --from=busybox /bin/sh /bin/sh
+
+# copy busybox mkdir to /bin/mkdir
+
+COPY --from=busybox /bin/mkdir /bin/mkdir
 
 # create directory /var/pubsub/data/
 RUN mkdir -p /var/pubsub/data/
