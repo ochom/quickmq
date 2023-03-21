@@ -69,7 +69,6 @@ func (c *quickMQ) getItem(qName string) *models.QueueItem {
 // consume returns a channel that will return the next item in the queue
 func (c *quickMQ) consume(queue string) <-chan []byte {
 	ch := make(chan []byte, 1)
-	defer close(ch)
 
 	go func() {
 		for {
