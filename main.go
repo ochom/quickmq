@@ -46,8 +46,16 @@ func main() {
 	channel := NewChannel(stop)
 
 	server := gin.New()
-	server.Use(gin.Logger())
+	server.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		SkipPaths: []string{
+			"/ping",
+			"/publish",
+			"/consume",
+		},
+	}))
 	server.Use(gin.Recovery())
+
+	// gin hide paths
 
 	server.GET("/ping", ping())
 	server.Any("/publish", publish(channel))
