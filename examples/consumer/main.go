@@ -33,6 +33,6 @@ func main() {
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt)
 
-	// Wait for a message on the exit channel
+	// Wait for a message on the exit quickMQ
 	<-exit
 }
