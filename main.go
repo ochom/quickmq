@@ -99,7 +99,7 @@ func publish(mq *quickMQ, repo *models.Repo) gin.HandlerFunc {
 
 		_, data, err := ws.ReadMessage()
 		if err != nil {
-			log.Println("Error reading message: ", err.Error())
+			log.Println("[publish] Error reading message: ", err.Error())
 			return
 		}
 

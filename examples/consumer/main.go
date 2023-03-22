@@ -5,13 +5,14 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync/atomic"
 
 	"github.com/ochom/quickmq/clients"
 	"github.com/ochom/quickmq/examples"
 )
 
 func main() {
-	i := 0
+	i := int32(0)
 	workerFunc := func(msg []byte) {
 		var message examples.Message
 		if err := json.Unmarshal(msg, &message); err != nil {
@@ -20,15 +21,17 @@ func main() {
 		}
 
 		log.Printf("Got message [%d]: %s ", i, message.Body)
-		i++
+		atomic.AddInt32(&i, 1)
 	}
 
-	go func() {
-		consumer := clients.NewConsumer("ws://localhost:3456", "test-queue")
-		if err := consumer.Consume(workerFunc); err != nil {
-			log.Println("Error consuming: ", err.Error())
-		}
-	}()
+	for i := 0; i < 10; i++ {
+		go func(worker int) {
+			c := clients.NewConsumer("ws://localhost:3456", "test-queue")
+			if err := c.Consume(workerFunc); err != nil {
+				log.Printf("[%s] workerID [%d] Error consuming: %v\n", c.GetQueueName(), worker, err)
+			}
+		}(i)
+	}
 
 	log.Println("Waiting for messages. To exit press CTRL+C")
 

@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ochom/quickmq/clients"
@@ -34,22 +33,38 @@ func main() {
 		panic(err)
 	}
 
-	wg := &sync.WaitGroup{}
-	wg.Add(20)
+	workSize := int32(100000)
 
-	for i := 0; i < 20; i++ {
-		go func(count int) {
-			defer wg.Done()
+	jobs := make(chan []byte, workSize)
+	results := make(chan bool, workSize)
 
-			b, err := json.Marshal(&examples.Message{Body: text})
-			if err != nil {
-				panic(err)
+	for w := 1; w <= 100; w++ {
+		go func(worker int) {
+			for j := range jobs {
+				publish(j, delay)
+				results <- true
 			}
-
-			publish(b, delay)
-		}(i)
+		}(w)
 	}
 
-	wg.Wait()
+	var i int32
+	for i = 0; i < workSize; i++ {
+		message := examples.Message{
+			Body: text + " " + strconv.Itoa(int(i)),
+		}
+
+		b, err := json.Marshal(message)
+		if err != nil {
+			panic(err)
+		}
+
+		jobs <- b
+	}
+
+	close(jobs)
+
+	for a := int32(0); a < workSize; a++ {
+		<-results
+	}
 	log.Println("All messages published")
 }
