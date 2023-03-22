@@ -78,7 +78,6 @@ func (c *quickMQ) getQueues(repo *models.Repo) ([]*models.Queue, error) {
 		q := models.NewQueue(k)
 		q.Items = v
 		res = append(res, q)
-
 	}
 
 	return res, nil
