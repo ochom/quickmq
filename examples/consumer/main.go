@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	i := 0
 	workerFunc := func(msg []byte) {
 		var message examples.Message
 		if err := json.Unmarshal(msg, &message); err != nil {
@@ -18,7 +19,8 @@ func main() {
 			return
 		}
 
-		log.Printf("Got message: %s ", message.Body)
+		log.Printf("Got message [%d]: %s ", i, message.Body)
+		i++
 	}
 
 	go func() {
