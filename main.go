@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/ochom/quickmq/models"
 )
 
 var upgrader = websocket.Upgrader{
@@ -16,13 +17,12 @@ var upgrader = websocket.Upgrader{
 }
 
 // create a cron job that runs every 30 minutes
-func cron(mq *quickMQ, stop chan os.Signal) {
+func cron(mq *quickMQ, repo *models.Repo, stop chan os.Signal) {
 	ticker := time.NewTicker(CronJobInterval)
 	for {
 		select {
 		case <-ticker.C:
-			until := time.Until(time.Now().Add(CronJobInterval))
-			items, err := mq.repo.GetQueueItems(until)
+			items, err := repo.GetQueueItems(time.Now().Add(CronJobInterval).Unix())
 			if err != nil {
 				log.Println("Error getting ready items: ", err.Error())
 				continue
@@ -39,6 +39,11 @@ func cron(mq *quickMQ, stop chan os.Signal) {
 }
 
 func main() {
+	repo, err := models.NewRepo()
+	if err != nil {
+		log.Fatalf("Error connecting to database: %v", err)
+	}
+
 	mq, err := newQuickMQ()
 	if err != nil {
 		log.Fatalf("Error while creating quickMQ: %v", err)
@@ -57,11 +62,11 @@ func main() {
 	// gin hide paths
 
 	server.GET("/ping", ping())
-	server.Any("/publish", publish(mq))
+	server.Any("/publish", publish(mq, repo))
 	server.Any("/consume", consume(mq))
 
 	// api
-	server.GET("/api/queues", getQueues(mq))
+	server.GET("/api/queues", getQueues(mq, repo))
 
 	go func() {
 		if err := server.Run(":8080"); err != nil {
@@ -72,8 +77,6 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
-	go cron(mq, stop)
+	go cron(mq, repo, stop)
 	<-stop
-
-	mq.kill()
 }

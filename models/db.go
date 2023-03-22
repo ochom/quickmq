@@ -1,10 +1,9 @@
 package models
 
 import (
-	"time"
-
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // Repo is a struct that holds the database connection
@@ -14,7 +13,9 @@ type Repo struct {
 
 // NewRepo creates a new Repo
 func NewRepo() (*Repo, error) {
-	db, err := gorm.Open(sqlite.Open("/var/pubsub/data/db.sqlite"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("/var/pubsub/data/db.sqlite"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -36,12 +37,12 @@ func (r *Repo) SaveItem(item *QueueItem) error {
 	return r.DB.Create(&item).Error
 }
 
-// GetQueues gets all the queues from the database
-func (r *Repo) GetQueueItems(until time.Duration) ([]*QueueItem, error) {
+// GetQueueItems gets all the queues from the database
+func (r *Repo) GetQueueItems(delay int64) ([]*QueueItem, error) {
 
 	ids := make([]string, 0)
 	var items []*QueueItem
-	err := r.DB.Where("send_at <= ?", time.Now().Add(until).Unix()).Find(&items).Error
+	err := r.DB.Where("delay <= ?", delay).Find(&items).Error
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +60,18 @@ func (r *Repo) GetQueueItems(until time.Duration) ([]*QueueItem, error) {
 	return items, nil
 }
 
-// DeleteQueues deletes all the queues from the database
+// GetAll gets all the queues from the database
+func (r *Repo) GetAll() ([]*QueueItem, error) {
+	var items []*QueueItem
+
+	if err := r.DB.Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+// DeleteQueueItems deletes all the queues from the database
 func (r *Repo) DeleteQueueItems(ids []string) error {
 	err := r.DB.Exec("DELETE FROM queue_items WHERE id IN ?", ids).Error
 	if err != nil {
