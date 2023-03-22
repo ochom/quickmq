@@ -17,7 +17,7 @@ func ping() gin.HandlerFunc {
 	}
 }
 
-func publish(mq *quickMQ) gin.HandlerFunc {
+func publish(mq *quickMQ, repo *models.Repo) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -46,12 +46,13 @@ func publish(mq *quickMQ) gin.HandlerFunc {
 		if req.Delay == 0 {
 			item := models.NewItem(req.Queue, req.Data, req.Delay)
 			mq.publish(item)
+			log.Println("Published to queue")
 			return
 		}
 
 		// if delay is greater than cron time, add queue and items to database
 		item := models.NewItem(req.Queue, req.Data, req.Delay)
-		if err := mq.repo.SaveItem(item); err != nil {
+		if err := repo.SaveItem(item); err != nil {
 			log.Println("Error adding to repo: ", err.Error())
 		}
 	}

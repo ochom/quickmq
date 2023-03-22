@@ -1,8 +1,6 @@
 package models
 
 import (
-	"time"
-
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -37,11 +35,11 @@ func (r *Repo) SaveItem(item *QueueItem) error {
 }
 
 // GetQueueItems gets all the queues from the database
-func (r *Repo) GetQueueItems(until time.Duration) ([]*QueueItem, error) {
+func (r *Repo) GetQueueItems(delay int64) ([]*QueueItem, error) {
 
 	ids := make([]string, 0)
 	var items []*QueueItem
-	err := r.DB.Where("send_at <= ?", time.Now().Add(until).Unix()).Find(&items).Error
+	err := r.DB.Where("delay <= ?", delay).Find(&items).Error
 	if err != nil {
 		return nil, err
 	}

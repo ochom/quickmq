@@ -11,7 +11,6 @@ type delivery chan []byte
 
 // quickMQ  is a  in-memory queue
 type quickMQ struct {
-	repo    *models.Repo
 	instant map[string]delivery
 	mutext  sync.Mutex
 }
