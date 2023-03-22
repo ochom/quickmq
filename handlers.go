@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"log"
 
+	"github.com/gorilla/websocket"
 	"github.com/ochom/quickmq/dto"
 	"github.com/ochom/quickmq/models"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 )
 
 func ping() gin.HandlerFunc {
@@ -46,7 +46,6 @@ func publish(mq *quickMQ, repo *models.Repo) gin.HandlerFunc {
 		if req.Delay == 0 {
 			item := models.NewItem(req.Queue, req.Data, req.Delay)
 			mq.publish(item)
-			log.Println("Published to queue")
 			return
 		}
 
@@ -72,13 +71,29 @@ func consume(mq *quickMQ) gin.HandlerFunc {
 			return
 		}
 
-		defer ws.Close()
+		closed := make(chan bool, 1)
 
-		messages := mq.consume(queueName)
-		for msg := range messages {
-			if err := ws.WriteMessage(websocket.BinaryMessage, msg); err != nil {
-				log.Printf("Error while writing to websocket: %v", err)
-				return
+		// consume messages from queue and write to websocket but stop when websocket is closed
+		go func() {
+			for {
+				select {
+				case msg := <-mq.consume(queueName):
+					if err := ws.WriteMessage(websocket.TextMessage, msg); err != nil {
+						log.Println("Error writing to websocket: ", err.Error())
+						return
+					}
+				case <-closed:
+					return
+				}
+			}
+		}()
+
+		// wait for websocket to close
+		for {
+			_, _, err := ws.ReadMessage()
+			if err != nil {
+				closed <- true
+				break
 			}
 		}
 	}
