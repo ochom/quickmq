@@ -83,8 +83,14 @@ func consume(mq *quickMQ) gin.HandlerFunc {
 	}
 }
 
-func getQueues(mq *quickMQ) gin.HandlerFunc {
+func getQueues(mq *quickMQ, repo *models.Repo) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		ctx.JSON(200, mq.getQueues())
+		res, err := mq.getQueues(repo)
+		if err != nil {
+			ctx.String(200, "No queues found")
+			return
+		}
+
+		ctx.JSON(200, res)
 	}
 }

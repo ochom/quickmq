@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/ochom/quickmq/models"
 )
 
 var upgrader = websocket.Upgrader{
@@ -39,6 +40,11 @@ func cron(mq *quickMQ, stop chan os.Signal) {
 }
 
 func main() {
+	repo, err := models.NewRepo()
+	if err != nil {
+		log.Fatalf("Error connecting to database: %v", err)
+	}
+
 	mq, err := newQuickMQ()
 	if err != nil {
 		log.Fatalf("Error while creating quickMQ: %v", err)
@@ -61,7 +67,7 @@ func main() {
 	server.Any("/consume", consume(mq))
 
 	// api
-	server.GET("/api/queues", getQueues(mq))
+	server.GET("/api/queues", getQueues(mq, repo))
 
 	go func() {
 		if err := server.Run(":8080"); err != nil {
@@ -74,6 +80,4 @@ func main() {
 
 	go cron(mq, stop)
 	<-stop
-
-	mq.kill()
 }

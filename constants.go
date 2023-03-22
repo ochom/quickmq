@@ -8,7 +8,7 @@ import (
 
 var (
 	// CronJobInterval is the interval at which the cron job runs
-	CronJobInterval = getCronInterval(30 * time.Minute)
+	CronJobInterval = getCronInterval(1 * time.Second)
 )
 
 func getCronInterval(d time.Duration) time.Duration {
