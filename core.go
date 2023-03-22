@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"sync"
-	"time"
 
 	"github.com/ochom/quickmq/models"
 )
@@ -26,13 +24,9 @@ func newQuickMQ() (*quickMQ, error) {
 }
 
 // Add adds a QueueItem to the queue
-func (c *quickMQ) publish(item *models.QueueItem) error {
+func (c *quickMQ) publish(item *models.QueueItem) {
 	c.mutext.Lock()
 	defer c.mutext.Unlock()
-
-	if time.Until(time.Unix(item.Delay, 0)) > 0 {
-		return fmt.Errorf("item not delayed")
-	}
 
 	q, ok := c.instant[item.QueueName]
 	if !ok {
@@ -41,8 +35,6 @@ func (c *quickMQ) publish(item *models.QueueItem) error {
 	}
 
 	q <- item.Data
-
-	return nil
 }
 
 // consume returns a channel that will return the next item in the queue

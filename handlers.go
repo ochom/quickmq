@@ -43,7 +43,7 @@ func publish(mq *quickMQ) gin.HandlerFunc {
 			return
 		}
 
-		if req.Delay <= CronJobInterval {
+		if req.Delay == 0 {
 			item := models.NewItem(req.Queue, req.Data, req.Delay)
 			mq.publish(item)
 			return
