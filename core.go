@@ -8,17 +8,20 @@ import (
 	"github.com/ochom/quickmq/models"
 )
 
+// delivery is the message channel content
+type delivery chan []byte
+
 // quickMQ  is a  in-memory queue
 type quickMQ struct {
 	repo    *models.Repo
-	instant map[string]chan []byte
+	instant map[string]delivery
 	mutext  sync.Mutex
 }
 
 // newQuickMQ creates a new quickMQ
 func newQuickMQ() (*quickMQ, error) {
 	return &quickMQ{
-		instant: make(map[string]chan []byte),
+		instant: make(map[string]delivery),
 	}, nil
 }
 
@@ -33,7 +36,7 @@ func (c *quickMQ) publish(item *models.QueueItem) error {
 
 	q, ok := c.instant[item.QueueName]
 	if !ok {
-		q = make(chan []byte, 1)
+		q = make(delivery, 1)
 		c.instant[item.QueueName] = q
 	}
 
@@ -43,7 +46,9 @@ func (c *quickMQ) publish(item *models.QueueItem) error {
 }
 
 // consume returns a channel that will return the next item in the queue
-func (c *quickMQ) consume(queue string) <-chan []byte {
+func (c *quickMQ) consume(queue string) delivery {
+	c.mutext.Lock()
+	defer c.mutext.Unlock()
 	return c.instant[queue]
 }
 
