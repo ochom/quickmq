@@ -14,18 +14,35 @@ RUN go mod download
 
 COPY . ./
 
-RUN go build -o /server .
+RUN go build -o /server ./cmd/main.go
 
+##
+## Build UI
+##
+
+FROM oven/bun:1.0 AS ui
+
+WORKDIR /app
+
+COPY web ./
+
+RUN bun install
+
+RUN bun run build
 
 ##
 ## Deploy
 ##
-FROM gcr.io/distroless/base-debian12:nonroot
+FROM busybox:1.35.0-uclibc AS deploy 
 
 WORKDIR /
 
+RUN mkdir -p /web
+
 COPY --from=build /server .
+COPY --from=ui /app/build /web/build
 
 EXPOSE 16321
+EXPOSE 6321
 
 ENTRYPOINT ["/server"]

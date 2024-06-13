@@ -57,7 +57,10 @@ func subscriptionHandler(c fiber.Ctx) error {
 			cl.joinChannel(queueName)
 		}()
 
-		cl.writeMessage([]byte(`{}`))
+		if err := cl.writeMessage([]byte(`{}`)); err != nil {
+			stop <- true
+			return
+		}
 		<-stop
 	})
 

@@ -1,0 +1,82 @@
+:root {
+  --primary-color: #3f51b5;
+  --secondary-color: #fd00db;
+  --error: #ff1100;
+  --success: #4caf50;
+  --warning: #ff9800;
+  --info: #2196f3;
+  --white: #fff;
+  --black: #000;
+  --grey: #b6b6b6;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  background: var(--white);
+}
+
+.login-box {
+  display: flex;
+  flex-direction: column;
+  margin: 100px auto 0;
+  width: 400px;
+  border: 1px solid var(--grey);
+  border-radius: 15px;
+  padding: 30px;
+}
+
+.lobo-box {
+  width: 100%;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.form-area {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-area {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.input-area label {
+  margin-bottom: 5px;
+}
+
+.input-area input {
+  padding: 10px;
+  border: 1px solid var(--grey);
+  border-radius: 5px;
+}
+
+.input-validation {
+  color: var(--error);
+}
+
+.button-area {
+  display: flex;
+  justify-content: center;
+}
+
+
+.button-area button {
+  padding: 10px;
+  border: 1px solid var(--primary-color);
+  border-radius: 5px;
+  background: var(--primary-color);
+  cursor: pointer;
+  color: var(--white);
+  width: 100%;
+  font-size: large;
+}
