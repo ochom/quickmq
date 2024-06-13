@@ -18,7 +18,7 @@ func login(c fiber.Ctx) error {
 		return err
 	}
 
-	username := env.Get("QUICK_MQ_USERNAME", "admin")
+	username := env.Get("QUICK_MQ_USER", "admin")
 	password := env.Get("QUICK_MQ_PASSWORD", "admin")
 
 	if data.Username != username {
