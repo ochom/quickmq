@@ -27,5 +27,6 @@ WORKDIR /
 COPY --from=build /server .
 
 EXPOSE 16321
+EXPOSE 6321
 
 ENTRYPOINT ["/server"]
