@@ -1,0 +1,85 @@
+name: Build api service
+"on":
+  push:
+    branches: [dev]
+    paths:
+      - "api/**"
+      - ".github/workflows/staging.api.yml"
+
+env:
+  ORGANIZATION: ochom
+  WORKING_DIR: .
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: |
+            api/go.mod
+            api/go.sum
+
+      - name: Install dependencies
+        run: go mod tidy
+        working-directory: ${{ env.WORKING_DIR }}
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v5
+        with:
+          working-directory: ${{ env.WORKING_DIR }}
+          version: latest
+          args: --timeout 5m
+
+      - name: Run tests
+        run: go test ./...
+        working-directory: ${{ env.WORKING_DIR }}
+
+  build:
+    needs: lint-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:latest
+          context: ${{ env.WORKING_DIR }}
+
+  prune:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get container name
+        id: container
+        run: |
+          prefix="ghcr.io/lysofts/"
+          name=${{ env.IMAGE_NAME }}
+          echo "CONTAINER_NAME=${name#$prefix}" >> "$GITHUB_OUTPUT"
+
+      - name: Remove untagged images
+        uses: vlaurin/action-ghcr-prune@v0.6.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          organization: ${{ env.ORGANIZATION }}
+          container: ${{ steps.container.outputs.CONTAINER_NAME }}
+          prune-untagged: true

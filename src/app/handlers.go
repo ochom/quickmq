@@ -25,10 +25,10 @@ func publisherHandler(c fiber.Ctx) error {
 	// schedule message
 	if message.Delay > 0 {
 		scheduleMessage(message)
+	} else {
+		publishMessage(message)
 	}
 
-	// publish instantly
-	publishMessage(message)
 	return c.JSON(fiber.Map{"status": "ok"})
 }
 
@@ -57,7 +57,7 @@ func subscriptionHandler(c fiber.Ctx) error {
 			cl.joinChannel(queueName)
 		}()
 
-		cl.writeMessage(fiber.Map{"status": "connected"})
+		cl.writeMessage([]byte(`{}`))
 		<-stop
 	})
 
