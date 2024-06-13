@@ -2,9 +2,6 @@ name: Build api service
 "on":
   push:
     branches: [dev]
-    paths:
-      - "api/**"
-      - ".github/workflows/staging.api.yml"
 
 env:
   ORGANIZATION: ochom
